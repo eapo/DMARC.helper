@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DMARC XML Report Viewer</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f5f7;
+      --fg: #111;
+      --card-bg: #ffffff;
+      --border: #d0d0dd;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --danger: #b91c1c;
+      --muted: #6b7280;
+      --table-header: #e5e7eb;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+    header {
+      margin-bottom: 20px;
+    }
+    header h1 {
+      margin: 0 0 4px;
+      font-size: 1.8rem;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .file-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .file-row label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    input[type="file"] {
+      font-size: 0.9rem;
+    }
+    button {
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    button:hover {
+      background: #f3f4f6;
+    }
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+    button:active {
+      transform: translateY(1px);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: pre-line;
+    }
+    .status .error {
+      color: var(--danger);
+      font-weight: 500;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .summary-card {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      background: #f9fafb;
+    }
+    .summary-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .summary-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .summary-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .table-wrapper {
+      max-height: 520px;
+      overflow: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--table-header);
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    tbody tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    tbody tr:hover {
+      background: #eef2ff;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .badge-pass {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+    .badge-fail {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fecaca;
+      border-radius: 0;
+    }
+    .badge-none {
+      background: #e5e7eb;
+      color: #374151;
+      border-color: #d1d5db;
+    }
+    .badge-disposition-none {
+      background: #e0f2fe;
+      color: #075985;
+      border-color: #bae6fd;
+    }
+    .badge-disposition-quarantine {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+    .badge-disposition-reject {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+
+    details {
+      margin-top: 4px;
+      font-size: 0.8rem;
+    }
+    details summary {
+      cursor: pointer;
+      list-style: none;
+      color: var(--accent);
+      font-weight: 500;
+      outline: none;
+    }
+    details summary::-webkit-details-marker {
+      display: none;
+    }
+    details summary::before {
+      content: "▸";
+      display: inline-block;
+      margin-right: 4px;
+      font-size: 0.7rem;
+      transform-origin: center;
+      transition: transform 0.15s ease;
+    }
+    details[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .details-body {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-width: 42em;
+    }
+    .details-section-title {
+      font-weight: 600;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+    .details-kv {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.78rem;
+    }
+    .details-kv span.key {
+      color: #4b5563;
+    }
+    .details-kv span.value {
+      color: #111827;
+    }
+    .raw-xml {
+      margin-top: 4px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: #111827;
+      color: #e5e7eb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      max-height: 200px;
+      overflow: auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .empty-state strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+
+    @media (max-width: 720px) {
+      header h1 {
+        font-size: 1.4rem;
+      }
+      .table-wrapper {
+        max-height: 420px;
+      }
+      th, td {
+        padding: 6px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>DMARC XML Report Viewer</h1>
+    <p>Load DMARC aggregate XML reports and view their records in a readable table with per‑record details.</p>
+  </header>
+
+  <section class="panel" id="file-panel">
+    <div class="file-row">
+      <label for="file-input">DMARC XML files</label>
+      <input id="file-input" type="file" accept=".xml" multiple>
+      <button id="clear-btn" type="button">Clear</button>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="panel" id="summary-panel">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Total records</div>
+        <div class="summary-value" id="summary-total-records">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Unique source IPs</div>
+        <div class="summary-value" id="summary-ips">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Unique header-from</div>
+        <div class="summary-value" id="summary-domains">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">SPF</div>
+        <div class="summary-value" id="summary-spf-pass">0 pass</div>
+        <div class="summary-sub" id="summary-spf-fail">0 fail</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">DKIM</div>
+        <div class="summary-value" id="summary-dkim-pass">0 pass</div>
+        <div class="summary-sub" id="summary-dkim-fail">0 fail</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="table-wrapper" id="table-wrapper">
+      <div class="empty-state" id="empty-state">
+        <strong>No records loaded yet</strong>
+        Select one or more DMARC XML files above to see their contents here.
+      </div>
+      <table id="records-table" style="display:none;">
+        <thead>
+        <tr>
+          <th>File</th>
+          <th>Source IP</th>
+          <th>Count</th>
+          <th>Header from</th>
+          <th>SPF</th>
+          <th>DKIM</th>
+          <th>Disposition</th>
+          <th>Details</th>
+        </tr>
+        </thead>
+        <tbody id="records-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const fileInput = document.getElementById('file-input');
+  const clearBtn = document.getElementById('clear-btn');
+  const statusEl = document.getElementById('status');
+
+  const summaryTotalRecords = document.getElementById('summary-total-records');
+  const summaryIps = document.getElementById('summary-ips');
+  const summaryDomains = document.getElementById('summary-domains');
+  const summarySpfPass = document.getElementById('summary-spf-pass');
+  const summarySpfFail = document.getElementById('summary-spf-fail');
+  const summaryDkimPass = document.getElementById('summary-dkim-pass');
+  const summaryDkimFail = document.getElementById('summary-dkim-fail');
+
+  const emptyState = document.getElementById('empty-state');
+  const tableEl = document.getElementById('records-table');
+  const tbodyEl = document.getElementById('records-tbody');
+
+  let allRecords = [];
+
+  function resetAll() {
+    allRecords = [];
+    statusEl.textContent = '';
+    fileInput.value = '';
+    render();
+  }
+
+  function setStatus(message, isError) {
+    if (!message) {
+      statusEl.textContent = '';
+      return;
+    }
+    statusEl.innerHTML = isError
+      ? '<span class="error">' + escapeHtml(message) + '</span>'
+      : escapeHtml(message);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function parseDmarcXml(text, fileName) {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'application/xml');
+    const parserError = xml.getElementsByTagName('parsererror')[0];
+    if (parserError) {
+      throw new Error('Invalid XML in file ' + fileName);
+    }
+
+    const feedback = xml.getElementsByTagName('feedback')[0] || xml.documentElement;
+    const reportMetadata = feedback.getElementsByTagName('report_metadata')[0];
+    let reportId = '';
+    if (reportMetadata) {
+      const rid = reportMetadata.getElementsByTagName('report_id')[0];
+      if (rid && rid.textContent) {
+        reportId = rid.textContent.trim();
+      }
+    }
+    if (!reportId) {
+      reportId = fileName || 'unknown';
+    }
+
+    const recordNodes = feedback.getElementsByTagName('record');
+    const records = [];
+
+    for (let i = 0; i < recordNodes.length; i++) {
+      const rec = recordNodes[i];
+
+      const row = rec.getElementsByTagName('row')[0];
+      const identifiers = rec.getElementsByTagName('identifiers')[0];
+      const authResults = rec.getElementsByTagName('auth_results')[0];
+
+      function getText(parent, tag) {
+        if (!parent) return '';
+        const el = parent.getElementsByTagName(tag)[0];
+        return el && el.textContent ? el.textContent.trim() : '';
+      }
+
+      const sourceIp = getText(row, 'source_ip');
+      const count = getText(row, 'count');
+      const policyEvaluated = row ? row.getElementsByTagName('policy_evaluated')[0] : null;
+      const disposition = getText(policyEvaluated, 'disposition');
+      const spfResult = getText(policyEvaluated, 'spf');
+      const dkimResult = getText(policyEvaluated, 'dkim');
+
+      const headerFrom = getText(identifiers, 'header_from');
+      const envelopeFrom = getText(identifiers, 'envelope_from');
+
+      let spfDomain = '';
+      let dkimDomain = '';
+      if (authResults) {
+        const spfNode = authResults.getElementsByTagName('spf')[0];
+        const dkimNode = authResults.getElementsByTagName('dkim')[0];
+        spfDomain = getText(spfNode, 'domain');
+        dkimDomain = getText(dkimNode, 'domain');
+      }
+
+      // Raw XML snippet for this record
+      const rawXml = new XMLSerializer().serializeToString(rec);
+
+      records.push({
+        reportId,
+        fileName,
+        sourceIp,
+        count: count || '0',
+        disposition: disposition || '',
+        spfResult: spfResult || '',
+        dkimResult: dkimResult || '',
+        headerFrom: headerFrom || '',
+        envelopeFrom: envelopeFrom || '',
+        spfDomain: spfDomain || '',
+        dkimDomain: dkimDomain || '',
+        rawXml
+      });
+    }
+
+    return records;
+  }
+
+  function computeSummary(records) {
+    const total = records.length;
+    const ips = new Set();
+    const domains = new Set();
+    let spfPass = 0, spfFail = 0;
+    let dkimPass = 0, dkimFail = 0;
+
+    records.forEach(r => {
+      if (r.sourceIp) ips.add(r.sourceIp);
+      if (r.headerFrom) domains.add(r.headerFrom.toLowerCase());
+
+      const spf = (r.spfResult || '').toLowerCase();
+      if (spf === 'pass') spfPass++;
+      else if (spf === 'fail') spfFail++;
+
+      const dkim = (r.dkimResult || '').toLowerCase();
+      if (dkim === 'pass') dkimPass++;
+      else if (dkim === 'fail') dkimFail++;
+    });
+
+    return {
+      total,
+      ips: ips.size,
+      domains: domains.size,
+      spfPass,
+      spfFail,
+      dkimPass,
+      dkimFail
+    };
+  }
+
+  function renderSummary() {
+    const s = computeSummary(allRecords);
+    summaryTotalRecords.textContent = s.total;
+    summaryIps.textContent = s.ips;
+    summaryDomains.textContent = s.domains;
+    summarySpfPass.textContent = s.spfPass + ' pass';
+    summarySpfFail.textContent = s.spfFail + ' fail';
+    summaryDkimPass.textContent = s.dkimPass + ' pass';
+    summaryDkimFail.textContent = s.dkimFail + ' fail';
+  }
+
+  function badgeClassForResult(result) {
+    const r = (result || '').toLowerCase();
+    if (r === 'pass') return 'badge badge-pass';
+    if (r === 'fail') return 'badge badge-fail';
+    return 'badge badge-none';
+  }
+
+  function badgeClassForDisposition(disposition) {
+    const d = (disposition || '').toLowerCase();
+    if (d === 'none') return 'badge badge-disposition-none';
+    if (d === 'quarantine') return 'badge badge-disposition-quarantine';
+    if (d === 'reject') return 'badge badge-disposition-reject';
+    return 'badge badge-none';
+  }
+
+  function renderTable() {
+    if (!allRecords.length) {
+      emptyState.style.display = 'block';
+      tableEl.style.display = 'none';
+      tbodyEl.innerHTML = '';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+    tableEl.style.display = 'table';
+
+    const rows = allRecords.map((r, idx) => {
+      const spfBadge = '<span class="' + badgeClassForResult(r.spfResult) + '">' +
+        escapeHtml(r.spfResult || 'n/a') + '</span>';
+      const dkimBadge = '<span class="' + badgeClassForResult(r.dkimResult) + '">' +
+        escapeHtml(r.dkimResult || 'n/a') + '</span>';
+      const dispBadge = '<span class="' + badgeClassForDisposition(r.disposition) + '">' +
+        escapeHtml(r.disposition || 'n/a') + '</span>';
+
+      const detailsId = 'details-' + idx;
+
+      const detailsHtml =
+        '<details id="' + detailsId + '">' +
+          '<summary>Show details</summary>' +
+          '<div class="details-body">' +
+            '<div class="details-section-title">Row &amp; identifiers</div>' +
+            '<div class="details-kv">' +
+              '<div><span class="key">Report ID:</span> <span class="value">' + escapeHtml(r.reportId) + '</span></div>' +
+              '<div><span class="key">File:</span> <span class="value">' + escapeHtml(r.fileName || '') + '</span></div>' +
+              '<div><span class="key">Source IP:</span> <span class="value">' + escapeHtml(r.sourceIp || '') + '</span></div>' +
+              '<div><span class="key">Count:</span> <span class="value">' + escapeHtml(r.count || '') + '</span></div>' +
+              '<div><span class="key">Header from:</span> <span class="value">' + escapeHtml(r.headerFrom || '') + '</span></div>' +
+              '<div><span class="key">Envelope from:</span> <span class="value">' + escapeHtml(r.envelopeFrom || '') + '</span></div>' +
+            '</div>' +
+            '<div class="details-section-title">Auth results</div>' +
+            '<div class="details-kv">' +
+              '<div><span class="key">SPF domain:</span> <span class="value">' + escapeHtml(r.spfDomain || '') + '</span></div>' +
+              '<div><span class="key">SPF result:</span> <span class="value">' + escapeHtml(r.spfResult || '') + '</span></div>' +
+              '<div><span class="key">DKIM domain:</span> <span class="value">' + escapeHtml(r.dkimDomain || '') + '</span></div>' +
+              '<div><span class="key">DKIM result:</span> <span class="value">' + escapeHtml(r.dkimResult || '') + '</span></div>' +
+              '<div><span class="key">Disposition:</span> <span class="value">' + escapeHtml(r.disposition || '') + '</span></div>' +
+            '</div>' +
+            '<div class="details-section-title">Raw record XML</div>' +
+            '<div class="raw-xml">' + escapeHtml(r.rawXml || '') + '</div>' +
+          '</div>' +
+        '</details>';
+
+      return '<tr>' +
+        '<td>' + escapeHtml(r.fileName || '') + '</td>' +
+        '<td>' + escapeHtml(r.sourceIp || '') + '</td>' +
+        '<td>' + escapeHtml(r.count || '') + '</td>' +
+        '<td>' + escapeHtml(r.headerFrom || '') + '</td>' +
+        '<td>' + spfBadge + '</td>' +
+        '<td>' + dkimBadge + '</td>' +
+        '<td>' + dispBadge + '</td>' +
+        '<td>' + detailsHtml + '</td>' +
+      '</tr>';
+    });
+
+    tbodyEl.innerHTML = rows.join('');
+  }
+
+  function render() {
+    renderSummary();
+    renderTable();
+  }
+
+  function handleFiles(files) {
+    if (!files || !files.length) {
+      resetAll();
+      return;
+    }
+
+    allRecords = [];
+    setStatus('Loading ' + files.length + ' file(s)...', false);
+
+    let processed = 0;
+    let errors = [];
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const text = e.target.result;
+          const recs = parseDmarcXml(text, file.name);
+          allRecords = allRecords.concat(recs);
+        } catch (err) {
+          errors.push(file.name + ': ' + (err && err.message ? err.message : String(err)));
+        } finally {
+          processed++;
+          if (processed === files.length) {
+            const msgParts = [];
+            msgParts.push('Processed ' + files.length + ' file(s).');
+            msgParts.push('Parsed records: ' + allRecords.length + '.');
+            if (errors.length) {
+              msgParts.push('Errors:\n' + errors.join('\n'));
+              setStatus(msgParts.join('\n'), true);
+            } else {
+              setStatus(msgParts.join('\n'), false);
+            }
+            render();
+          }
+        }
+      };
+      reader.onerror = function () {
+        processed++;
+        errors.push(file.name + ': failed to read file');
+        if (processed === files.length) {
+          const msgParts = [];
+          msgParts.push('Processed ' + files.length + ' file(s).');
+          msgParts.push('Parsed records: ' + allRecords.length + '.');
+          msgParts.push('Errors:\n' + errors.join('\n'));
+          setStatus(msgParts.join('\n'), true);
+          render();
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  fileInput.addEventListener('change', function (e) {
+    handleFiles(e.target.files);
+  });
+
+  clearBtn.addEventListener('click', function () {
+    resetAll();
+  });
+
+  // Initial render
+  render();
+})();
+</script>
+</body>
+</html>
